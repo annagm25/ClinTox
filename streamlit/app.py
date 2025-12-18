@@ -320,7 +320,7 @@ if page == "Single Analysis":
         ex_col1, ex_col2, ex_col3 = st.columns(3)
         if ex_col1.button("Aspirin"): update_smiles("CC(=O)OC1=CC=CC=C1C(=O)O")
         if ex_col2.button("Caffeine"): update_smiles("CN1C=NC2=C1C(=O)N(C(=O)N2C)C")
-        if ex_col3.button("Digitoxin (Toxic)"): update_smiles("CC12CCC(CC1CCC3C2CCC4(C3CCC4C5=CC(=O)OC5)O)OC6CC(C(C(O6)O)O)OC7CC(C(C(O7)O)O)OC8CC(C(C(O8)O)O)O")
+        if ex_col3.button("Digitoxin"): update_smiles("CC12CCC(CC1CCC3C2CCC4(C3CCC4C5=CC(=O)OC5)O)OC6CC(C(C(O6)O)O)OC7CC(C(C(O7)O)O)OC8CC(C(C(O8)O)O)O")
 
     with right_col:
         st.subheader("2. Analysis & Prediction")
