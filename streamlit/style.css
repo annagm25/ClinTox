@@ -1,0 +1,139 @@
+/* Professional Light Theme for ClinTox AI */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg-color: #f8f9fa;
+  --card-bg: #ffffff;
+  --text-color: #2c3e50;
+  --text-muted: #6c757d;
+  --primary-color: #2c7be5; /* Professional Blue */
+  --secondary-color: #6e84a3;
+  --success-color: #00d97e;
+  --danger-color: #e63757;
+  --border-color: #e3ebf6;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.02);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* Global Reset & Typography */
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+.stApp {
+  background-color: var(--bg-color);
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  color: #12263f;
+  letter-spacing: -0.02em;
+}
+
+/* Cards & Containers */
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 24px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+
+/* Buttons */
+.stButton > button {
+  border-radius: 8px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  padding: 0.5rem 1rem;
+  transition: all 0.2s;
+}
+
+.stButton > button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Primary Button Override */
+div[data-testid="stButton"] > button[kind="primary"] {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+}
+
+/* Inputs */
+.stTextInput > div > div > input {
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: #fff;
+  color: var(--text-color);
+}
+
+.stTextInput > div > div > input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(44, 123, 229, 0.1);
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+  gap: 24px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0;
+}
+
+.stTabs [data-baseweb="tab"] {
+  height: 48px;
+  white-space: pre-wrap;
+  background-color: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.stTabs [aria-selected="true"] {
+  color: var(--primary-color);
+  border-bottom: 2px solid var(--primary-color);
+}
+
+/* Custom Classes used in app.py */
+.metric-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  background-color: #edf2f9;
+  color: var(--secondary-color);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+.result-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+/* Adjust Streamlit's default padding */
+.block-container {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+  max-width: 1200px;
+}
+
+/* Footer */
+footer {
+  visibility: hidden;
+}
