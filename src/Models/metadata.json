@@ -1,0 +1,13 @@
+{
+  "model_name": "GIN",
+  "saved_at_utc": "2025-12-18T15:51:13.811417Z",
+  "node_features_dim": 23,
+  "global_features_dim": 5,
+  "device": "cpu",
+  "test_metrics": {
+    "test_loss": 1.294376844505094,
+    "roc_auc": 0.8928571428571428,
+    "pr_auc": 0.7245208897382811
+  },
+  "notes": "Saved full model via torch.save (pickle) and copied state_dict."
+}
