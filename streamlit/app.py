@@ -69,37 +69,6 @@ def fingerprint_from_smiles(smiles: str) -> Optional[np.ndarray]:
     except Exception:
         return None
 
-@st.cache_data(show_spinner=False)
-def search_pubchem(query: str) -> Optional[str]:
-    """Search PubChem for a compound and return its Canonical SMILES."""
-    if not query:
-        return None
-    
-    # Clean query
-    query = query.strip()
-    
-    # Try name search first
-    base_url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound"
-    endpoint = f"{base_url}/name/{requests.utils.quote(query)}/property/CanonicalSMILES/JSON"
-    
-    try:
-        # Add headers to mimic a browser to avoid some blocks
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        resp = requests.get(endpoint, timeout=10, headers=headers)
-        if resp.status_code == 200:
-            data = resp.json()
-            return data["PropertyTable"]["Properties"][0]["CanonicalSMILES"]
-        elif resp.status_code == 404:
-            # Try fast similarity search or autocomplete if name fails? 
-            # For now, just return None to avoid complexity
-            return None
-        else:
-            return None
-    except Exception:
-        return None
-
 def molfile_to_smiles(file_bytes: bytes, filename: str) -> Optional[str]:
     name = filename.lower()
     try:
@@ -210,7 +179,7 @@ def predict_single(model, smiles: str) -> Optional[dict]:
         st.error(f"Prediction error: {e}")
         return None
 
-def plot_gauge(probability: float):
+def plot_gauge(probability: float, key: str = "gauge"):
     if not PLOTLY_AVAILABLE:
         st.progress(probability)
         st.caption(f"Toxicity Probability: {probability:.1%}")
@@ -245,7 +214,7 @@ def plot_gauge(probability: float):
         height=250,
         margin=dict(l=20, r=20, t=30, b=20)
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=key)
 
 # --- Main App ---
 inject_css()
@@ -257,262 +226,270 @@ if 'prediction_result' not in st.session_state:
 if 'current_smiles' not in st.session_state:
     st.session_state.current_smiles = ""
 
-# Header
-col_logo, col_title = st.columns([1, 5])
-with col_title:
-    st.title("ClinTox AI Predictor")
-    st.markdown("### Advanced Molecular Toxicity Classification")
+# --- Sidebar Navigation ---
+with st.sidebar:
+    st.title("🧬 ClinTox AI")
+    page = st.radio("Navigation", ["Single Analysis", "Batch Prediction", "About Model"])
+    st.markdown("---")
     st.markdown(f"""
-    <div style='display:flex; gap:15px; font-size:0.9em; color:var(--muted);'>
-        <span>🧬 Model: XGBoost (ECFP4)</span>
-        <span>🎯 ROC-AUC: {metadata.get('test_rocauc', '0.95+')}</span>
-        <span>🧪 Training Data: {metadata.get('n_training_samples', '1400+')} compounds</span>
+    <div style='font-size:0.8em; color:gray;'>
+        <b>Model Info:</b><br>
+        Type: XGBoost (ECFP4)<br>
+        ROC-AUC: {metadata.get('test_rocauc', '0.95+')}<br>
+        Training Data: {metadata.get('n_training_samples', '1400+')}
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("---")
-
-# Main Layout
-left_col, right_col = st.columns([1, 1.2], gap="large")
-
-with left_col:
-    st.subheader("1. Input Molecule")
+# --- Page: Single Analysis ---
+if page == "Single Analysis":
+    st.title("🧪 Single Molecule Analysis")
+    st.markdown("Analyze individual compounds for clinical toxicity.")
     
-    input_tab1, input_tab2, input_tab3 = st.tabs(["🔍 Search Database", "✏️ Manual SMILES", "📂 Upload File"])
-    
-    # Helper to update state
-    def update_smiles(smiles):
-        st.session_state.current_smiles = smiles
-        st.session_state.prediction_result = None
+    left_col, right_col = st.columns([1, 1.2], gap="large")
 
-    with input_tab1:
-        st.info("Search over 100M+ compounds via PubChem")
-        col_search, col_btn = st.columns([3, 1])
-        with col_search:
-            compound_name = st.text_input("Enter compound name", placeholder="e.g., Aspirin, Caffeine", key="search_name")
-        with col_btn:
-            st.write("") # Spacer
-            st.write("") # Spacer
-            search_clicked = st.button("Search", type="secondary")
-            
-        if search_clicked and compound_name:
-            with st.spinner(f"Searching for '{compound_name}'..."):
-                found_smiles = search_pubchem(compound_name)
-                if found_smiles:
-                    st.success(f"Found: {found_smiles[:30]}...")
-                    update_smiles(found_smiles)
-                else:
-                    st.error("Compound not found in PubChem database.")
-
-    with input_tab2:
-        def manual_callback():
-            if st.session_state.manual_input:
-                update_smiles(st.session_state.manual_input)
+    with left_col:
+        st.subheader("1. Input Molecule")
         
-        st.text_input("Paste SMILES string", placeholder="C1=CC=CC=C1", key="manual_input", on_change=manual_callback)
+        input_tab1, input_tab2 = st.tabs(["✏️ Manual SMILES", "📂 Upload File"])
+        
+        # Helper to update state
+        def update_smiles(smiles):
+            st.session_state.current_smiles = smiles
+            st.session_state.prediction_result = None
 
-    with input_tab3:
-        uploaded_file = st.file_uploader("Upload .sdf, .mol, .pdb", type=["sdf", "mol", "pdb"])
-        if uploaded_file:
-            parsed_smiles = molfile_to_smiles(uploaded_file.read(), uploaded_file.name)
-            if parsed_smiles:
-                update_smiles(parsed_smiles)
+        with input_tab1:
+            def manual_callback():
+                if st.session_state.manual_input:
+                    update_smiles(st.session_state.manual_input)
+            
+            st.text_input("Paste SMILES string", placeholder="C1=CC=CC=C1", key="manual_input", on_change=manual_callback)
+
+        with input_tab2:
+            uploaded_file = st.file_uploader("Upload .csv, .sdf, .mol, .pdb", type=["csv", "sdf", "mol", "pdb"])
+            if uploaded_file:
+                filename = uploaded_file.name.lower()
+                
+                # Handle CSV (Batch Mode inside Tab)
+                if filename.endswith(".csv"):
+                    try:
+                        df_batch = pd.read_csv(uploaded_file)
+                        if "SMILES" in df_batch.columns:
+                            st.info(f"📄 CSV loaded with {len(df_batch)} compounds.")
+                            
+                            if st.button("Predict & Generate Report", key="btn_batch_tab"):
+                                with st.spinner("Processing batch..."):
+                                    results = []
+                                    progress_bar = st.progress(0)
+                                    for i, smi in enumerate(df_batch["SMILES"]):
+                                        res = predict_single(model, str(smi))
+                                        if res:
+                                            results.append({
+                                                "SMILES": smi,
+                                                "Probability": res["prob"],
+                                                "Prediction": "Toxic" if res["prob"] > 0.5 else "Non-Toxic"
+                                            })
+                                        else:
+                                            results.append({"SMILES": smi, "Probability": None, "Prediction": "Error"})
+                                        progress_bar.progress((i + 1) / len(df_batch))
+                                    
+                                    res_df = pd.DataFrame(results)
+                                    csv_data = res_df.to_csv(index=False).encode('utf-8')
+                                    st.success("✅ Processing complete!")
+                                    st.download_button(
+                                        label="📥 Download Predictions",
+                                        data=csv_data,
+                                        file_name="clintox_predictions.csv",
+                                        mime="text/csv"
+                                    )
+                        else:
+                            st.error("CSV must contain a 'SMILES' column.")
+                    except Exception as e:
+                        st.error(f"Error reading CSV: {e}")
+
+                # Handle Molecular Files (Single Analysis)
+                else:
+                    uploaded_file.seek(0)
+                    parsed_smiles = molfile_to_smiles(uploaded_file.read(), uploaded_file.name)
+                    if parsed_smiles:
+                        update_smiles(parsed_smiles)
+                    else:
+                        st.error("Could not parse file.")
+
+        # Quick Examples
+        st.markdown("#### Quick Examples")
+        ex_col1, ex_col2, ex_col3 = st.columns(3)
+        if ex_col1.button("Aspirin"): update_smiles("CC(=O)OC1=CC=CC=C1C(=O)O")
+        if ex_col2.button("Caffeine"): update_smiles("CN1C=NC2=C1C(=O)N(C(=O)N2C)C")
+        if ex_col3.button("Digitoxin (Toxic)"): update_smiles("CC12CCC(CC1CCC3C2CCC4(C3CCC4C5=CC(=O)OC5)O)OC6CC(C(C(O6)O)O)OC7CC(C(C(O7)O)O)OC8CC(C(C(O8)O)O)O")
+
+    with right_col:
+        st.subheader("2. Analysis & Prediction")
+        
+        if st.session_state.current_smiles:
+            # Visualization
+            img = draw_molecule(st.session_state.current_smiles)
+            if img:
+                st.image(img, caption="Molecular Structure", use_container_width=False, width=350)
             else:
-                st.error("Could not parse file.")
+                st.warning("Invalid SMILES structure")
+            
+            # Prediction Button
+            st.markdown("#### Prediction Results")
+            if st.button("Analyze Toxicity", type="primary", use_container_width=True):
+                with st.spinner("Analyzing molecular fingerprints..."):
+                    time.sleep(0.5)
+                    result = predict_single(model, st.session_state.current_smiles)
+                    st.session_state.prediction_result = result
+            
+            # Display Results from Session State
+            if st.session_state.prediction_result:
+                result = st.session_state.prediction_result
+                prob = result["prob"]
+                is_toxic = prob > 0.5
+                
+                # Result Card
+                card_color = "var(--danger)" if is_toxic else "var(--success)"
+                bg_color = "#ffebee" if is_toxic else "#e8f5e9"
+                label = "TOXIC" if is_toxic else "NON-TOXIC"
+                
+                st.markdown(f"""
+                <div style="
+                    background: {bg_color};
+                    border-left: 6px solid {card_color};
+                    padding: 20px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                ">
+                    <h2 style="margin:0; color:{card_color}; font-size: 1.8rem;">{label}</h2>
+                    <p style="margin:5px 0 0 0; color: #495057; font-weight: 500;">Confidence Score: {prob:.2%}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Gauge Chart
+                plot_gauge(prob, key="single_gauge")
 
-    # Quick Examples
-    st.markdown("#### Quick Examples")
-    ex_col1, ex_col2, ex_col3 = st.columns(3)
-    if ex_col1.button("Aspirin"): update_smiles("CC(=O)OC1=CC=CC=C1C(=O)O")
-    if ex_col2.button("Caffeine"): update_smiles("CN1C=NC2=C1C(=O)N(C(=O)N2C)C")
-    if ex_col3.button("Digitoxin (Toxic)"): update_smiles("CC12CCC(CC1CCC3C2CCC4(C3CCC4C5=CC(=O)OC5)O)OC6CC(C(C(O6)O)O)OC7CC(C(C(O7)O)O)OC8CC(C(C(O8)O)O)O")
+                # Radar Chart for Descriptors
+                if PLOTLY_AVAILABLE and "features" in result:
+                    with st.expander("🕸️ Physicochemical Profile (Radar Chart)"):
+                        feats = result["features"].iloc[0]
+                        radar_cols = ['MW', 'LogP', 'TPSA', 'NumHDonors', 'NumHAcceptors']
+                        r_vals = [
+                            min(feats['MW']/500, 1), 
+                            min(max(feats['LogP']/5, 0), 1), 
+                            min(feats['TPSA']/150, 1), 
+                            min(feats['NumHDonors']/5, 1), 
+                            min(feats['NumHAcceptors']/10, 1)
+                        ]
+                        
+                        fig_radar = go.Figure(data=go.Scatterpolar(
+                            r=r_vals,
+                            theta=radar_cols,
+                            fill='toself',
+                            name='Molecule'
+                        ))
+                        fig_radar.update_layout(
+                            polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+                            showlegend=False,
+                            height=300,
+                            margin=dict(l=40, r=40, t=20, b=20)
+                        )
+                        st.plotly_chart(fig_radar, use_container_width=True, key="radar_chart")
 
-    st.markdown("---")
-    st.subheader("Batch Prediction")
-    st.write("Upload a CSV with a 'SMILES' column.")
+                # --- Similarity Search ---
+                with st.expander("🔍 Similar Known Compounds"):
+                    with st.spinner("Searching database..."):
+                        mol = Chem.MolFromSmiles(st.session_state.current_smiles)
+                        if mol:
+                            df_ref, fps_ref = load_reference_data()
+                            if df_ref is not None:
+                                sim_mols = find_similar_molecules(mol, df_ref, fps_ref)
+                                if sim_mols:
+                                    sim_cols = st.columns(3)
+                                    for i, sim in enumerate(sim_mols):
+                                        with sim_cols[i]:
+                                            sim_img = draw_molecule(sim["SMILES"])
+                                            st.image(sim_img, use_container_width=True)
+                                            st.caption(f"Sim: {sim['Similarity']:.2f}")
+                                            status = "Toxic" if sim["CT_TOX"] == 1 else "Safe"
+                                            fda = "FDA Approved" if sim["FDA_APPROVED"] == 1 else "Not FDA"
+                                            st.markdown(f"**{status}** | {fda}")
+                            else:
+                                st.error("Could not load reference data.")
+                        else:
+                            st.error("Invalid molecule structure.")
+                
+                # SHAP Explanation (if available)
+                if shap and "features" in result:
+                    with st.expander("📊 Key Structural Features (SHAP)"):
+                        try:
+                            explainer = shap.TreeExplainer(model)
+                            shap_values = explainer.shap_values(result["features"])
+                            vals = shap_values[0] if isinstance(shap_values, list) else shap_values
+                            
+                            if np.sum(np.abs(vals)) > 0:
+                                st.caption("Positive values push towards Toxicity, negative towards Safety.")
+                                feature_importance = pd.DataFrame({
+                                    'Feature': [f"Bit {i}" for i in range(FP_BITS)],
+                                    'Impact': vals[0]
+                                }).sort_values(by='Impact', key=abs, ascending=False).head(10)
+                                st.bar_chart(feature_importance.set_index('Feature'))
+                        except Exception:
+                            pass
+        else:
+            st.info("👈 Please select or enter a molecule to begin analysis.")
+
+# --- Page: Batch Prediction ---
+elif page == "Batch Prediction":
+    st.title("📦 Batch Prediction")
+    st.write("Upload a CSV file containing a 'SMILES' column to predict toxicity for multiple compounds at once.")
+    
     batch_file = st.file_uploader("Upload CSV", type=["csv"], key="batch_upload")
     if batch_file:
         try:
             df_batch = pd.read_csv(batch_file)
             if "SMILES" in df_batch.columns:
-                if st.button("Predict Batch"):
-                    with st.spinner("Processing batch..."):
-                        results = []
-                        for smi in df_batch["SMILES"]:
-                            res = predict_single(model, str(smi))
-                            if res:
-                                results.append({
-                                    "SMILES": smi,
-                                    "Probability": res["prob"],
-                                    "Prediction": "Toxic" if res["prob"] > 0.5 else "Non-Toxic"
-                                })
-                            else:
-                                results.append({"SMILES": smi, "Probability": None, "Prediction": "Error"})
-                        
-                        res_df = pd.DataFrame(results)
-                        st.dataframe(res_df)
-                        csv = res_df.to_csv(index=False).encode('utf-8')
-                        st.download_button("Download Predictions", csv, "predictions.csv", "text/csv")
+                st.write(f"Loaded {len(df_batch)} compounds.")
+                if st.button("Run Batch Prediction", type="primary"):
+                    progress_bar = st.progress(0)
+                    results = []
+                    
+                    for i, smi in enumerate(df_batch["SMILES"]):
+                        res = predict_single(model, str(smi))
+                        if res:
+                            results.append({
+                                "SMILES": smi,
+                                "Probability": res["prob"],
+                                "Prediction": "Toxic" if res["prob"] > 0.5 else "Non-Toxic"
+                            })
+                        else:
+                            results.append({"SMILES": smi, "Probability": None, "Prediction": "Error"})
+                        progress_bar.progress((i + 1) / len(df_batch))
+                    
+                    res_df = pd.DataFrame(results)
+                    st.success("Batch processing complete!")
+                    st.dataframe(res_df)
+                    csv = res_df.to_csv(index=False).encode('utf-8')
+                    st.download_button("Download Predictions", csv, "predictions.csv", "text/csv")
             else:
                 st.error("CSV must contain a 'SMILES' column.")
         except Exception as e:
             st.error(f"Error reading file: {e}")
 
-with right_col:
-    st.subheader("2. Analysis & Prediction")
+# --- Page: About ---
+elif page == "About Model":
+    st.title("ℹ️ About ClinTox AI")
+    st.markdown("""
+    ### Project Overview
+    This application uses a machine learning model to predict the clinical toxicity of chemical compounds based on their molecular structure.
     
-    if st.session_state.current_smiles:
-        # Visualization
-        img = draw_molecule(st.session_state.current_smiles)
-        if img:
-            st.image(img, caption="Molecular Structure", use_container_width=False, width=350)
-        else:
-            st.warning("Invalid SMILES structure")
-        
-        # Prediction Button
-        st.markdown("#### Prediction Results")
-        if st.button("Analyze Toxicity", type="primary", use_container_width=True):
-            with st.spinner("Analyzing molecular fingerprints..."):
-                # Simulate a tiny delay for UX
-                time.sleep(0.5)
-                result = predict_single(model, st.session_state.current_smiles)
-                st.session_state.prediction_result = result
-        
-        # Display Results from Session State
-        if st.session_state.prediction_result:
-            result = st.session_state.prediction_result
-            prob = result["prob"]
-            is_toxic = prob > 0.5
-            
-            # Result Card
-            card_color = "var(--danger)" if is_toxic else "var(--success)"
-            bg_color = "#ffebee" if is_toxic else "#e8f5e9"
-            label = "TOXIC" if is_toxic else "NON-TOXIC"
-            
-            st.markdown(f"""
-            <div style="
-                background: {bg_color};
-                border-left: 6px solid {card_color};
-                padding: 20px;
-                border-radius: 8px;
-                margin-bottom: 20px;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            ">
-                <h2 style="margin:0; color:{card_color}; font-size: 1.8rem;">{label}</h2>
-                <p style="margin:5px 0 0 0; color: #495057; font-weight: 500;">Confidence Score: {prob:.2%}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Gauge Chart
-            plot_gauge(prob)
-
-            # --- Lipinski's Rules ---
-            st.markdown("##### Lipinski's Rule of 5")
-            mol = Chem.MolFromSmiles(st.session_state.current_smiles)
-            if mol:
-                rules, passed_count = check_lipinski(mol)
-                cols = st.columns(4)
-                for i, (rule_name, (passed, val)) in enumerate(rules.items()):
-                    color = "green" if passed else "red"
-                    icon = "✅" if passed else "❌"
-                    cols[i].markdown(f"**{rule_name}**<br><span style='color:{color}'>{val} {icon}</span>", unsafe_allow_html=True)
-                
-                if passed_count == 4:
-                    st.success("✅ Drug-like (Passes all rules)")
-                else:
-                    st.warning(f"⚠️ Drug-likeness issues ({passed_count}/4 passed)")
-
-            # Radar Chart for Descriptors
-            if PLOTLY_AVAILABLE and "features" in result:
-                st.markdown("##### Physicochemical Profile")
-                feats = result["features"].iloc[0]
-                radar_cols = ['MW', 'LogP', 'TPSA', 'NumHDonors', 'NumHAcceptors']
-                r_vals = [
-                    min(feats['MW']/500, 1), 
-                    min(max(feats['LogP']/5, 0), 1), 
-                    min(feats['TPSA']/150, 1), 
-                    min(feats['NumHDonors']/5, 1), 
-                    min(feats['NumHAcceptors']/10, 1)
-                ]
-                
-                fig_radar = go.Figure(data=go.Scatterpolar(
-                    r=r_vals,
-                    theta=radar_cols,
-                    fill='toself',
-                    name='Molecule'
-                ))
-                fig_radar.update_layout(
-                    polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
-                    showlegend=False,
-                    height=300,
-                    margin=dict(l=40, r=40, t=20, b=20)
-                )
-                st.plotly_chart(fig_radar, use_container_width=True)
-
-            # --- Similarity Search ---
-            st.markdown("##### Similar Known Compounds")
-            with st.spinner("Searching database..."):
-                df_ref, fps_ref = load_reference_data()
-                if df_ref is not None:
-                    sim_mols = find_similar_molecules(mol, df_ref, fps_ref)
-                    if sim_mols:
-                        sim_cols = st.columns(3)
-                        for i, sim in enumerate(sim_mols):
-                            with sim_cols[i]:
-                                sim_img = draw_molecule(sim["SMILES"])
-                                st.image(sim_img, use_container_width=True)
-                                st.caption(f"Sim: {sim['Similarity']:.2f}")
-                                status = "Toxic" if sim["CT_TOX"] == 1 else "Safe"
-                                fda = "FDA Approved" if sim["FDA_APPROVED"] == 1 else "Not FDA"
-                                st.markdown(f"**{status}** | {fda}")
-                else:
-                    st.error("Could not load reference data.")
-            
-            # Result Card
-            card_color = "var(--danger)" if is_toxic else "var(--success)"
-            bg_color = "#ffebee" if is_toxic else "#e8f5e9"
-            label = "TOXIC" if is_toxic else "NON-TOXIC"
-            
-            st.markdown(f"""
-            <div style="
-                background: {bg_color};
-                border-left: 6px solid {card_color};
-                padding: 20px;
-                border-radius: 8px;
-                margin-bottom: 20px;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            ">
-                <h2 style="margin:0; color:{card_color}; font-size: 1.8rem;">{label}</h2>
-                <p style="margin:5px 0 0 0; color: #495057; font-weight: 500;">Confidence Score: {prob:.2%}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Gauge Chart
-            plot_gauge(prob)
-            
-            # SHAP Explanation (if available)
-            if shap and "features" in result:
-                try:
-                    explainer = shap.TreeExplainer(model)
-                    shap_values = explainer.shap_values(result["features"])
-                    # Handle different shap output formats
-                    vals = shap_values[0] if isinstance(shap_values, list) else shap_values
-                    
-                    if np.sum(np.abs(vals)) > 0:
-                        st.markdown("##### Key Structural Features (SHAP)")
-                        st.caption("Positive values push towards Toxicity, negative towards Safety.")
-                        # Simple bar chart for top features
-                        feature_importance = pd.DataFrame({
-                            'Feature': [f"Bit {i}" for i in range(FP_BITS)],
-                            'Impact': vals[0]
-                        }).sort_values(by='Impact', key=abs, ascending=False).head(10)
-                        
-                        st.bar_chart(feature_importance.set_index('Feature'))
-                except Exception:
-                    pass # Fail silently for SHAP to keep UI clean
-    else:
-        st.info("👈 Please select or enter a molecule to begin analysis.")
-
-# Footer
-st.markdown("---")
-st.markdown("<div style='text-align: center; color: var(--muted); font-size: 0.8em;'>ClinTox AI Project | NTNU Data Science 2025</div>", unsafe_allow_html=True)
+    ### Methodology
+    *   **Algorithm**: XGBoost Classifier
+    *   **Features**: 
+        *   Morgan Fingerprints (Radius 2, 2048 bits)
+        *   Physicochemical Descriptors (MW, LogP, TPSA, etc.)
+    *   **Dataset**: ClinTox (part of MoleculeNet), containing qualitative data of drugs approved by the FDA and those that have failed clinical trials for toxicity reasons.
+    
+    ### Performance
+    The model achieves a ROC-AUC score of approximately **0.95** on the test set, indicating high capability in distinguishing between toxic and non-toxic compounds.
+    """)

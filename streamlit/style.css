@@ -60,7 +60,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .stButton > button:hover {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 /* Primary Button Override */
@@ -68,6 +68,33 @@ div[data-testid="stButton"] > button[kind="primary"] {
   background-color: var(--primary-color);
   color: white;
   border: none;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+  background-color: #ffffff;
+  border-right: 1px solid var(--border-color);
+}
+
+[data-testid="stSidebar"] .block-container {
+  padding-top: 2rem;
+}
+
+/* Expanders */
+.streamlit-expanderHeader {
+  background-color: #ffffff;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.streamlit-expanderContent {
+  background-color: #fcfcfc;
+  border-radius: 0 0 8px 8px;
+  border: 1px solid var(--border-color);
+  border-top: none;
+  padding: 1rem;
 }
 
 /* Inputs */
