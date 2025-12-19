@@ -4,7 +4,6 @@
 [![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/PyTorch-Geometric-red?logo=pytorch)](https://pytorch-geometric.readthedocs.io/)
 [![App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit)](https://streamlit.io/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 **Integrating Molecular Fingerprints and Geometric Deep Learning to predict clinical trial toxicity.**
 
