@@ -11,12 +11,12 @@
 
 ## 📌 Project Overview
 
-[cite_start]Drug discovery is plagued by high attrition rates, often due to unforeseen toxicity in late-stage clinical trials[cite: 372]. This project rigorously benchmarks two competing approaches for **in silico toxicity prediction** using the highly imbalanced **ClinTox** dataset ($N=1477$):
+Drug discovery is plagued by high attrition rates, often due to unforeseen toxicity in late-stage clinical trials. This project rigorously benchmarks two competing approaches for **in silico toxicity prediction** using the highly imbalanced **ClinTox** dataset ($N=1477$):
 
 1.  **XGBoost (Gradient Boosting):** Utilizing engineered molecular descriptors (ECFP4 fingerprints, physicochemical properties).
 2.  **GIN (Graph Isomorphism Network):** An end-to-end geometric deep learning architecture.
 
-[cite_start]Contrary to the "Deep Learning superiority" assumption, our findings demonstrate that **XGBoost is the more robust and deployment-ready solution** for this specific data-scarce environment, acting as a "Sniper" (high precision) compared to GIN's "Shotgun" (high recall, low precision) approach [cite: 689-691].
+Contrary to the "Deep Learning superiority" assumption, our findings demonstrate that **XGBoost is the more robust and deployment-ready solution** for this specific data-scarce environment, acting as a "Sniper" (high precision) compared to GIN's "Shotgun" (high recall, low precision) approach.
 
 ## 📊 Key Results
 
@@ -27,22 +27,22 @@ The models were evaluated using a **Scaffold Split** (80/10/10) to test generali
 | **XGBoost** | **0.957** | **0.60** | **0.86** | **0.82** | **Robust & Precise ("Sniper")** |
 | **GIN** | 0.907 | 0.31 | 0.86 | 0.64 | High False Positives ("Shotgun") |
 
-[cite_start]*Detailed metrics derived from the test set[cite: 604, 605].*
+*Detailed metrics derived from the test set.*
 
-> [cite_start]**Conclusion:** While both models detect toxic compounds equally well ($Recall \approx 0.86$), XGBoost reduces false alarms by nearly 50%, making it the superior choice for automated screening pipelines[cite: 691].
+> **Conclusion:** While both models detect toxic compounds equally well ($Recall \approx 0.86$), XGBoost reduces false alarms by nearly 50%, making it the superior choice for automated screening pipelines.
 
 ## 🛠️ Methodology
 
 ### Data Pipeline
 * **Source:** ClinTox dataset (via MoleculeNet).
-* [cite_start]**Imbalance:** High class imbalance (only 7.6% toxic compounds)[cite: 455].
-* [cite_start]**Preprocessing:** * **Tabular:** RDKit extraction of 2048-bit Morgan Fingerprints (ECFP4) + Lipinski descriptors[cite: 478].
+* **Imbalance:** High class imbalance (only 7.6% toxic compounds).
+* **Preprocessing:** * **Tabular:** RDKit extraction of 2048-bit Morgan Fingerprints (ECFP4) + Lipinski descriptors.
     * **Graph:** Molecular graphs with atom/bond features for GIN.
-    * [cite_start]**Splitting:** Deterministic **Scaffold Split** to prevent data leakage[cite: 520].
+    * **Splitting:** Deterministic **Scaffold Split** to prevent data leakage.
 
 ### Architectures
-* [cite_start]**XGBoost:** Ensemble of 300 estimators with `scale_pos_weight` to handle imbalance[cite: 539, 541].
-* [cite_start]**GIN:** 3-layer Graph Isomorphism Network with global addition pooling and weighted BCE loss[cite: 510, 551].
+* **XGBoost:** Ensemble of 300 estimators with `scale_pos_weight` to handle imbalance.
+* **GIN:** 3-layer Graph Isomorphism Network with global addition pooling and weighted BCE loss.
 
 ## 🚀 Installation
 
@@ -67,7 +67,7 @@ To replicate this study or run the app locally:
 
 ## 💻 Usage: Toxicity Prediction App
 
-[cite_start]We provide a **Streamlit** web application to easily interact with the optimized XGBoost model[cite: 666].
+We provide a **Streamlit** web application to easily interact with the optimized XGBoost model.
 
 ### Run the App
 ```bash
